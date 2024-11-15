@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جدول الأرقام القومية مع الأسماء وأزرار النسخ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            text-align: center;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        tr.copied {
+            background-color: #d4edda; /* لون مميز عند النسخ */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>جدول الأرقام القومية مع الأسماء وأزرار النسخ</h1>
+    <p>قم بتحميل ملف Excel الذي يحتوي على الأرقام القومية والأسماء:</p>
+
+    <input type="file" id="excelFile" accept=".xlsx, .xls">
+    <div id="tableContainer"></div>
+
+    <!-- مكتبة XLSX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('excelFile').addEventListener('change', handleFile);
+
+        let lastCopiedRow = null; // لتحديد الصف الأخير الذي تم نسخه
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                alert("يرجى اختيار ملف Excel أولاً");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0]; // اختيار أول ورقة عمل
+                const sheet = workbook.Sheets[sheetName];
+
+                // استخراج الأسماء من العمود A والأرقام القومية من العمود B
+                const range = XLSX.utils.decode_range(sheet['!ref']);
+                const data = [];
+                for (let row = range.s.r + 1; row <= range.e.r; row++) { // البدء من الصف الثاني
+                    const nameCellAddress = `A${row + 1}`; // العمود A (الأسماء)
+                    const nationalIdCellAddress = `B${row + 1}`; // العمود B (الأرقام القومية)
+
+                    const nameCell = sheet[nameCellAddress];
+                    const nationalIdCell = sheet[nationalIdCellAddress];
+
+                    if (nameCell && nationalIdCell) {
+                        data.push({
+                            name: nameCell.v, // الاسم
+                            nationalId: nationalIdCell.v // الرقم القومي
+                        });
+                    }
+                }
+
+                if (data.length > 0) {
+                    displayTable(data);
+                } else {
+                    alert("لم يتم العثور على بيانات صالحة في العمودين A وB!");
+                }
+            };
+
+            reader.readAsBinaryString(file);
+        }
+
+        function displayTable(data) {
+            const tableContainer = document.getElementById('tableContainer');
+            tableContainer.innerHTML = ''; // تفريغ المحتوى السابق
+
+            // إنشاء الجدول
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+
+            // إنشاء رأس الجدول
+            thead.innerHTML = `
+                <tr>
+                    <th>#</th>
+                    <th>الاسم</th>
+                    <th>الرقم القومي</th>
+                    <th>نسخ</th>
+                </tr>
+            `;
+
+            // إنشاء الصفوف
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${row.name}</td>
+                    <td>${row.nationalId}</td>
+                    <td><button onclick="copyToClipboard('${row.nationalId}', this)">نسخ</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+        }
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                // إزالة العلامة من الصف السابق
+                if (lastCopiedRow) {
+                    lastCopiedRow.classList.remove('copied');
+                }
+
+                // إضافة العلامة للصف الحالي
+                const currentRow = button.parentElement.parentElement;
+                currentRow.classList.add('copied');
+                lastCopiedRow = currentRow; // تحديث الصف الأخير الذي تم نسخه
+            }).catch(err => {
+                alert("حدث خطأ أثناء النسخ إلى الحافظة: " + err);
+            });
+        }
+    </script>
+</body>
+</html>
